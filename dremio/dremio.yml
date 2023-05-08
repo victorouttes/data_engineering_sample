@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  dremio-coordinator:
+    image: dremio/dremio-oss:24.0
+    ports:
+      - "9047:9047"
+      - "31010:31010"
+    environment:
+      - DREMIO_JAVA_EXTRA_OPTS=-Ddremio.shell.console.interactive=false
+    volumes:
+      - dremio-coordinator-data:/opt/dremio/data
+    networks:
+      - shared_network
+
+  dremio-executor:
+    image: dremio/dremio-oss:24.0
+    environment:
+      - DREMIO_JAVA_EXTRA_OPTS=-Ddremio.shell.console.interactive=false
+      - DREMIO_ROLE=executor
+      - DREMIO_MASTER=dremio-coordinator
+    volumes:
+      - dremio-executor-data:/opt/dremio/data
+    networks:
+      - shared_network
+
+volumes:
+  dremio-coordinator-data:
+  dremio-executor-data:
+
+networks:
+  shared_network:
+    name: shared_network

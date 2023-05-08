@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - shared_network
+
+  webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=I_SL47-RnzhCIytLsh8_Y6QaN2orbmSHrk80X02_tJY=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=JF8Us5Q-Op7Ot0G2Rpt9Yv5lZ2i8qNwjJ8fvxd-TlCQ=
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
+    command: bash -c "./init_airflow.sh && airflow webserver"
+    networks:
+      - shared_network
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=I_SL47-RnzhCIytLsh8_Y6QaN2orbmSHrk80X02_tJY=
+      - AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC=5
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+    command: scheduler
+    networks:
+      - shared_network
+
+volumes:
+  postgres-data:
+
+networks:
+  shared_network:
+    name: shared_network

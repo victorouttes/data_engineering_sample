@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+    command: server --console-address :9001 /data
+    volumes:
+      - minio-data:/data
+    networks:
+      - shared_network
+
+volumes:
+  minio-data:
+
+networks:
+  shared_network:
+    name: shared_network

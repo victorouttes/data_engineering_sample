@@ -1,0 +1,7 @@
+FROM apache/airflow:2.2.0
+
+RUN pip install pandas apache-airflow-providers-amazon
+USER root
+COPY ./init_airflow.sh init_airflow.sh
+RUN chmod +x init_airflow.sh
+USER 1001
