@@ -37,6 +37,7 @@ docker-compose -f .\dremio.yml up
 
 3- Dremio
 * http://localhost:9047/
+* You must create the credentials on first access
 * login: admin
 * password: admin123
 
@@ -50,12 +51,12 @@ Airflow connection to Minio:
 ```
 {"aws_access_key_id": "<minio_access>", "aws_secret_access_key": "<minio_secret>", "host": "http://172.24.0.2:9000"}
 ```
-* the 172.24.0.2 is the IP informed by minio when it starts! It may change in your environment.
+* the 172.24.0.2 is the IP informed by minio when it starts! It may change in your environment. Run `docker logs <minio_container>` to see the true IP.
 
 Dremio connection to Minio:
 
 * Add a Amazon S3 Source.
-* In General menu, select AWS Access Key and put the keys from Minio.
+* In General menu, select AWS Access Key and put the keys from Minio. Also, uncheck the encryption option.
 * In Advanced Options menu, check "Enable compatibility mode" and add these 2 connection properties:
 ```
 fs.s3a.path.style.access = true

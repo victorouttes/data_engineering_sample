@@ -46,9 +46,9 @@ dag = DAG(
     dag_id="dag_coleta_PETR4",
     description="Uma DAG para coletar dados do Yahoo Finance do dia da execucao usando a biblioteca requests",
     default_args=default_args,
-    schedule_interval=timedelta(days=5),
+    schedule_interval=None,
     start_date=datetime(2023, 4, 1),
-    catchup=True,
+    catchup=False,
 )
 
 fetch_data_task = PythonOperator(

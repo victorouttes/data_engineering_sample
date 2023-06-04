@@ -1,0 +1,134 @@
+version: "3.8"
+
+services:
+  minio:
+    image: minio/minio:RELEASE.2023-06-02T23-17-26Z
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+    command: server --console-address :9001 /data
+    volumes:
+      - minio-data:/data
+    networks:
+      - shared_network
+
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - shared_network
+
+  airflow-init:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile.airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=I_SL47-RnzhCIytLsh8_Y6QaN2orbmSHrk80X02_tJY=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=JF8Us5Q-Op7Ot0G2Rpt9Yv5lZ2i8qNwjJ8fvxd-TlCQ=
+    command: bash -c "./init_airflow.sh"
+    networks:
+      - shared_network
+  
+  webserver:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile.airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=I_SL47-RnzhCIytLsh8_Y6QaN2orbmSHrk80X02_tJY=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=JF8Us5Q-Op7Ot0G2Rpt9Yv5lZ2i8qNwjJ8fvxd-TlCQ=
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
+    command: bash -c "airflow webserver"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - shared_network
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile.airflow
+    depends_on:
+      webserver:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=I_SL47-RnzhCIytLsh8_Y6QaN2orbmSHrk80X02_tJY=
+      - AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC=5
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - shared_network
+  
+  dremio-coordinator:
+    image: dremio/dremio-oss:24.0
+    ports:
+      - "9047:9047"
+      - "31010:31010"
+    environment:
+      - DREMIO_JAVA_EXTRA_OPTS=-Ddremio.shell.console.interactive=false
+    volumes:
+      - dremio-coordinator-data:/opt/dremio/data
+    networks:
+      - shared_network
+
+  dremio-executor:
+    image: dremio/dremio-oss:24.0
+    environment:
+      - DREMIO_JAVA_EXTRA_OPTS=-Ddremio.shell.console.interactive=false
+      - DREMIO_ROLE=executor
+      - DREMIO_MASTER=dremio-coordinator
+    volumes:
+      - dremio-executor-data:/opt/dremio/data
+    networks:
+      - shared_network
+
+volumes:
+  minio-data:
+  postgres-data:
+  dremio-coordinator-data:
+  dremio-executor-data:
+
+networks:
+  shared_network:
+    name: shared_network
